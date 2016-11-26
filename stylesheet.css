@@ -7,3 +7,9 @@
     border-radius: 5px;
     padding: .5em;
 }
+.apple-icon {
+    background-image: url("icons/apple-icon.png");
+    background-size: 20px;
+    height: 20px;
+    width: 20px;
+}
