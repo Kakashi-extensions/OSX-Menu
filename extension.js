@@ -1,5 +1,5 @@
 /*
- This file has been developed by Albert Palacios.
+ This file has been developed by Tristan Jones.
  This software may be used and distributed
  according to the terms of the GNU General Public License version 2.
 
@@ -8,7 +8,7 @@
  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
  details.
 
- Copyright Albert Palacios
+ Copyright Tristan Jones
 */
 const Clutter = imports.gi.Clutter;
 const Gtk = imports.gi.Gtk;
@@ -52,12 +52,13 @@ let list = [
 { type: "separator" },
 { type: "recent",	text: _("Recent Items"),		action: ''					},
 
+
 { type: "forceQuit",	text: _("Force Quit"),		action: ''					},
 { type: "separator" },
 { type: "powerOff",	text: _("Power Off"),		action: ''					},
 { type: "powerOff",	text: _("Restart"),		action: ''					},
 { type: "command",	text: _("Log Out"),		action: ['gnome-session-quit']			},
-{ type: "command",	text: _("Lock"),			action: ['gnome-screensaver-command','-l']	},
+
 {}
 ];
 
@@ -70,14 +71,17 @@ const extensionObject = new Lang.Class({
 		this.forceQuitPtr = null;
 		this.forceQuitPids = null;
 
-		let icon = new St.Icon({ icon_name: 'emblem-default-symbolic',
-					 style_class: 'system-status-icon' });
+		let icon = new St.Icon({ icon_name: 'apple-icon',
+					 style_class: 'apple-icon' });
 		let label = new St.Label({ text: "" });
 		this.parent(0.0, label.text);
 		this.actor.add_actor(icon);
 
 		let item = null;
 		for (x in list) {
+
+
+
 
 			if (list[x].type=="command") {
 				item = new PopupMenu.PopupMenuItem(_(list[x].text));
@@ -95,129 +99,94 @@ const extensionObject = new Lang.Class({
 
 
 
-    /*  if (list[x].type=="recent") {
-        item = new PopupMenu.PopupSubMenuMenuItem(_(list[x].text));
 
-        item.connect('activate', Lang.bind(this, function RecentItems()
+      if (list[x].type=="recent") {
+        let bob = new PopupMenu.PopupSubMenuMenuItem(_(list[x].text));
+        this.menu.addMenuItem(bob);
+
+
+        let RecentManager = new Gtk.RecentManager();
+        let items = RecentManager.get_items();
+        let modlist = new Array();
+        let countItem = items.length;
+
+
+        for (let i = 0; i < countItem; i++)
+        {
+          modlist[i] = new Array(2);
+          modlist[i][0] = items[i].get_modified();
+          modlist[i][1] = i;
+        }
+
+
+        function joe()
+        {
+            Gio.app_info_launch_default_for_uri(c, global.create_app_launch_context(0, -1));
+        }
+
+        function sortfunc(x,y)
+        {
+          return y[0] - x[0];
+        }
+        modlist.sort(sortfunc);
+
+
+        function MyPopupMenuItem()
         {
           this._init.apply(this, arguments);
         }
 
-        RecentItems.prototype =
+
+        MyPopupMenuItem.prototype =
         {
-            __proto__: PanelMenu.Button.prototype,
+            __proto__: PopupMenu.PopupBaseMenuItem.prototype,
 
-            _init: function()
+            _init: function(gicon, text, params)
             {
-                PanelMenu.Button.prototype._init.call(this, 0.0);
-                this.connect('destroy', Lang.bind(this, this._onDestroy));
-                this._iconActor = new St.Icon({ icon_name: 'document-open-recent-symbolic',
-                                                style_class: 'system-status-icon' });
-                this.actor.add_actor(this._iconActor);
-                this.actor.add_style_class_name('panel-status-button');
+                PopupMenu.PopupBaseMenuItem.prototype._init.call(this, params);
 
-                this.RecentManager = new Gtk.RecentManager();
-                this._display();
+                this.box = new St.BoxLayout({ style_class: 'popup-combobox-item' });
 
-                this.conhandler = this.RecentManager.connect('changed', Lang.bind(this, this._redisplay));
+                if (gicon)
+                  this.icon = new St.Icon({ gicon: gicon, style_class: 'popup-menu-icon' });
+                else
+                  this.icon = new St.Icon({ icon_name: 'edit-clear-symbolic', icon_size: 22 });
 
-                Main.panel.addToStatusArea('recent-items', this);
-            },
+                this.box.add(this.icon);
+                this.label = new St.Label({ text: text });
+                this.box.add(this.label);
+                this.actor.add(this.box);
+            }
+        }
 
-            _onDestroy: function() {
-                this.RecentManager.disconnect(this.conhandler);
-            },
 
-           _display: function()
-           {
+        let id = 0;
+        let idshow = 0;
+        let blacklistString = BLACKLIST.replace(/\s/g, "");
+        let blacklistList = blacklistString.split(",");
 
-                let items = this.RecentManager.get_items();
-                let modlist = new Array();
-                let countItem = items.length;
 
-                for (let i = 0; i < countItem; i++)
+        while (idshow < ITEMS && id < countItem)
+        {   let itemtype = items[modlist[id][1]].get_mime_type();
+            if (blacklistList.indexOf((itemtype.split("/"))[0]) == -1)
+            {
+                let gicon = Gio.content_type_get_icon(itemtype);
+                let jill = new MyPopupMenuItem(gicon, items[modlist[id][1]].get_display_name(), {});
+                bob.menu.addMenuItem(jill);
+                jill.connect('activate', Lang.bind(this,
+
+                  function joe(a, b, c)
                 {
-                  modlist[i] = new Array(2);
-                  modlist[i][0] = items[i].get_modified();
-                  modlist[i][1] = i;
+                    Gio.app_info_launch_default_for_uri(c, global.create_app_launch_context(0, -1));
                 }
 
-                modlist.sort(sortfunc);
+                , items[modlist[id][1]].get_uri()));
+                idshow++;
+            }
+            id++;
+        }
 
-                let id = 0;
-                let idshow = 0;
-                let blacklistString = BLACKLIST.replace(/\s/g, "");
-                let blacklistList = blacklistString.split(",");
-
-                while (idshow < ITEMS && id < countItem)
-                {   let itemtype = items[modlist[id][1]].get_mime_type();
-                    if (blacklistList.indexOf((itemtype.split("/"))[0]) == -1)
-                    {
-                        let gicon = Gio.content_type_get_icon(itemtype);
-                        let menuItem = new MyPopupMenuItem(gicon, items[modlist[id][1]].get_display_name(), {});
-                        this.menu.addMenuItem(menuItem);
-                        menuItem.connect('activate', Lang.bind(this, this._launchFile, items[modlist[id][1]].get_uri()));
-                        idshow++;
-                    }
-                    id++;
-                }
-
-                if (id < countItem && MORE > 0)
-                {
-                    this.moreItem = new PopupMenu.PopupSubMenuMenuItem(_("More..."));
-                    this.menu.addMenuItem(this.moreItem);
-                    while (idshow < ITEMS+MORE && id < countItem)
-                    {
-                        let itemtype = items[modlist[id][1]].get_mime_type();
-                        if (blacklistList.indexOf((itemtype.split("/"))[0]) == -1)
-                        {
-                            let gicon = Gio.content_type_get_icon(itemtype);
-                            let menuItem = new MyPopupMenuItem(gicon, items[modlist[id][1]].get_display_name(), {});
-                            this.moreItem.menu.addMenuItem(menuItem);
-                            menuItem.connect('activate', Lang.bind(this, this._launchFile, items[modlist[id][1]].get_uri()));
-                            idshow++;
-                        }
-                        id++;
-                    }
-                }
-
-                if (countItem > 0)
-                {
-                    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-                    let menuItem = new MyPopupMenuItem(false, 'Clear list', {});
-                    this.menu.addMenuItem(menuItem);
-                    menuItem.connect('activate', Lang.bind(this, this._clearAll));
-                }
-            },
-            _redisplay: function()
-            {
-                this.menu.removeAll();
-                this._display();
-            },
-            _launchFile: function(a, b, c)
-            {
-                Gio.app_info_launch_default_for_uri(c, global.create_app_launch_context(0, -1));
-            },
-            _clearAll: function()
-            {
-                let GtkRecent = new Gtk.RecentManager();
-                GtkRecent.purge_items();
-            },
-        })()
-        ));
-        this.menu.addMenuItem(item);
       };
-*/
-
-
-
-
-
-//PopupMenu.PopupSubMenuMenuItem(section.name);
-
-
-
-
 
 			if (list[x].type=="desktop") {
 				var action = list[x].action;
@@ -353,3 +322,4 @@ function disable() {
 	settingsJSON.disconnect(settingsID);
 	extension.destroy();
 }
+
